@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">MedidorPeligro</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+
+    <!--Cadenas personalizadas para la app, se encuentran en idioma español-->
+    <string name="casco_moto">Vehiculos/dispositivos</string>
+    <string name="stats">Estadisticas</string>
+
+
+    <!--    descripciones-->
+    <string name="Floating_button">Boton flotante</string>
+    
+    <!--cadenas para el codigo java-->
+    <string name="titulo_comando">"Enviar comando al modulo bluetooth"</string>
+    <string name="enviar_comando">Enviar</string>
+    <string name="cancelar_dialogo">Cancelar</string>
+    <string name="dialogo_cancelado">Se ha cancelado la operacion</string>
+
+
+    <!--Cadenas para las preferencias-->
+    <string name="modulo_bluetooth">modulo</string>
+    <string name="nombre_bluetooth">nombre</string>
+    <string name="mac_bluetooth">mac</string>
+</resources>
