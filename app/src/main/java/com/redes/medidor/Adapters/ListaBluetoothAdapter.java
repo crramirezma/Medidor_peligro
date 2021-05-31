@@ -11,11 +11,14 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.ViewModel;
 import androidx.recyclerview.widget.RecyclerView;
@@ -51,6 +54,7 @@ public class ListaBluetoothAdapter extends RecyclerView.Adapter<ListaBluetoothAd
     @Override
     public void onBindViewHolder(@NonNull @NotNull ListaBluetoothHolder holder, int position) {
         holder.asignarDatos(position);
+        holder.layout.setAnimation(AnimationUtils.loadAnimation(fragment,R.anim.transition_animation));
     }
 
     @Override
@@ -76,6 +80,9 @@ public class ListaBluetoothAdapter extends RecyclerView.Adapter<ListaBluetoothAd
         private TextView nombreTxt;
         private TextView macTxt;
 
+        //Layout sera usado para la animacion
+        ConstraintLayout layout;
+
         private ImageButton btBoton;
 
         public ListaBluetoothHolder(@NonNull @NotNull View itemView) {
@@ -91,6 +98,9 @@ public class ListaBluetoothAdapter extends RecyclerView.Adapter<ListaBluetoothAd
             macTxt=itemView.findViewById(R.id.macTxt);
 
             btBoton=itemView.findViewById(R.id.btBoton);
+
+            layout=itemView.findViewById(R.id.layout_main);
+
 
         }
 

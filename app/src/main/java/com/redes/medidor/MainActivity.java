@@ -2,10 +2,18 @@ package com.redes.medidor;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.Menu;
 import android.widget.Toast;
@@ -13,8 +21,11 @@ import android.widget.Toast;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.navigation.NavigationView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
@@ -28,11 +39,26 @@ import com.redes.medidor.ViewModel.MainViewModel;
 import com.redes.medidor.databinding.ActivityMainBinding;
 import com.redes.medidor.ui.vehiculo.VehiculosViewModel;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.ArrayList;
+
+
+
+public class MainActivity extends AppCompatActivity{
+    //Constante para el control del bluetooth encendido
+    private static final int REQUEST_ENABLE_BT = 1;
+
+    StringBuilder recDataString;
+
 
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityMainBinding binding;
     private VehiculosViewModel vehiculosViewModel;
+
+    private Handler datosBTHandler;
+
+
+    //observador del estado del bluetooth
+    private BroadcastReceiver broadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +74,23 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+
+
+        //Iniciando el BroadCaster
+        //Usando la funcion auxiliar, se crea el broadcast
+        broadcastReceiver=crearBroadCast();
+        //Luego de crear el Broadcast, lo ultimo que falta es suscribirlo para que cuando se ejecute cierta accion
+        //El receiver la pueda procesar
+        //Para ello, la funcion "registrarEventosBluetooth" se encarga del trabajo
+        registrarEventosBluetooth();
+
+        datosBTHandler=new BtHandler();
+
+
+
+        //Iniciando el StringBuilder para la recepcion de mensajes desde el hilo
+        recDataString=new StringBuilder();
+
         setSupportActionBar(binding.appBarMain.toolbar);
         binding.appBarMain.fab.setOnClickListener(opcionesBluetoothDialog);
         DrawerLayout drawer = binding.drawerLayout;
@@ -62,6 +105,9 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
+
+        //Creando los observadores
+        observadores();
 
         //Funcion que crea y gestiona los observers de los viewModel
         //iniciarObservers();
@@ -83,11 +129,72 @@ public class MainActivity extends AppCompatActivity {
                 || super.onSupportNavigateUp();
     }
 
-   /* private void iniciarObservers() {
-        mainViewModel.getDispositivos().observe(this,bluetoothDevices -> {
 
-        });
-    }*/
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable @org.jetbrains.annotations.Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if(requestCode==REQUEST_ENABLE_BT){
+            if(resultCode==Activity.RESULT_OK){
+
+            }else{
+                Toast.makeText(getApplicationContext(),"La aplicacion requiere de Bluetooth para poder funcionar",Toast.LENGTH_LONG).show();
+            }
+            //Validar que se halla iniciado el bluetooth
+        }
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        //Eliminando el thread creado antes
+
+        //Eliminando el Broadcast receiver de ejecucion
+
+        this.unregisterReceiver(broadcastReceiver);
+    }
+    /**
+     * ESTADO DEL BLUETOOTH
+     *
+     * crearBroadCast=crea el BroadCast para la recepcion del estado del bluetooth
+     * registrarEventosBluetooth(): Subscribe el broadcast a los eventos para que los pueda recibir y procesar
+     */
+    BroadcastReceiver crearBroadCast(){
+        return new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                //Se recupera desde el intent el tipo de accion que se esta leyendo
+                final String action = intent.getAction();
+                // Filtramos por la accion. Nos interesa detectar BluetoothAdapter.ACTION_STATE_CHANGED
+                if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
+                    //Ahora toca filtrar que tipo de accion esta realizando el bluetooth
+                    //Para ello, primero le pedimos el dato al intent
+                    final int estado = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,BluetoothAdapter.ERROR);
+
+                    switch (estado){
+                        case BluetoothAdapter.STATE_OFF:
+                            Toast.makeText(getApplicationContext(),"Porfavor inicia el Bluetooth",Toast.LENGTH_SHORT).show();
+                            vehiculosViewModel.recargarDatos();
+                            break;
+                        case BluetoothAdapter.STATE_ON:
+                            //codigo para cuando se activa el bluetooth
+                            vehiculosViewModel.recargarDatos();
+                            break;
+                        default:
+
+                            break;
+                    }
+                }
+            }
+        };
+    }
+
+    public void registrarEventosBluetooth(){
+        IntentFilter filtro = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        this.registerReceiver(broadcastReceiver, filtro);
+    }
+
 
     /**
      * ZONA DE RECEPCION DE SOLICITUDES DE LA INTERFAZ PARA EL MODULO BLUETOOTH
@@ -103,8 +210,14 @@ public class MainActivity extends AppCompatActivity {
         modulo bluetooth con el que se encuentre conectado el dispositivo\
     */
     View.OnClickListener opcionesBluetoothDialog= v -> {
-        AlertDialog alert= lanzarDialog();
-        alert.show();
+        //Validando que el Bluetooth se encuentre disponible
+        if(vehiculosViewModel.bluetoothDisponible()){
+            AlertDialog alert= lanzarDialog();
+            alert.show();
+        }else{
+            Toast.makeText(getApplicationContext(),"El bluetooth no se encuentra disponible", Toast.LENGTH_SHORT).show();
+        }
+
     };
 
     /*
@@ -116,10 +229,25 @@ public class MainActivity extends AppCompatActivity {
         String nombre=preferences.getString(String.valueOf(R.string.nombre_bluetooth),"No hay modulo disponible");
         String Mac=preferences.getString(String.valueOf(R.string.mac_bluetooth),"0");
 
+        String[] datos={"Comenzar coneccion"};
         //Lista de opciones para el manejo del bluetooth
 
         AlertDialog.Builder builder=new AlertDialog.Builder(this);
         builder
+                .setItems(datos, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which){
+                            case 0:
+
+                                boolean v=vehiculosViewModel.comenzarTransferencia();
+                                Toast.makeText(getApplicationContext(),(v?"Se ha conectado":"No se ha conectado"),Toast.LENGTH_SHORT).show();
+                                break;
+                            default:
+                                dialog.dismiss();
+                        }
+                    }
+                })
                 .setPositiveButton(R.string.enviar_comando, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -135,4 +263,78 @@ public class MainActivity extends AppCompatActivity {
 
         return builder.create();
     }
+
+
+    /**
+     * En esta funcion se encuentran programados todos los observaDOREs
+     */
+    private void observadores() {
+
+
+        //Validando si el valor de activado es modificado
+        vehiculosViewModel.getEsActivado().observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(Boolean aBoolean) {
+                if(!aBoolean){
+                    //Peticion para que inicie el bluetooth
+                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+
+                }else{
+                    Toast.makeText(getApplicationContext(),"El dispositivo tiene el Bluetooth activado",Toast.LENGTH_LONG).show();
+                }
+                //Validar si el bluetooth esta activado
+            }
+        });
+
+        //Evaluando si el dispositivo acepta bluetooth
+        vehiculosViewModel.getEsAdaptable().observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(Boolean aBoolean) {
+                //evalua si el dispositivo es apto para bluetooth o no
+                if(!aBoolean){
+                    Toast toast = Toast.makeText(getApplicationContext(),"El dispositivo no es apto para bluetooth",Toast.LENGTH_LONG);
+                    toast.setGravity(Gravity.CENTER,0,0);
+                    toast.show();
+                }
+
+            }
+        });
+
+
+        //Observador constante del estado del bluetooth
+
+
+    }
+    //Creando una subclase para el handler
+    private class BtHandler extends Handler implements ConstantesMensajes{
+        Toast toast;
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            if(msg.what==MESSAGE_WRITE){       //Comprobando que el mensaje recibido es el que estabamos esperando
+                //Se pasa el mensaje a un objeto de tipo string
+                String mensaje=(String)msg.obj;
+                toast.makeText(getApplicationContext(),mensaje,Toast.LENGTH_SHORT).show();
+                recDataString.append(mensaje);
+                //Usando el INDICE_FINAL para saber cuando termina el mensaje
+                int finalMensaje=recDataString.indexOf(Character.toString(INDICE_FINAL));
+                //Si el mensaje no es de tamaño uno, leer el mensaje
+                if(finalMensaje>0){
+                    //Sacando el String correspondiente al mensaje
+                    mensaje=recDataString.substring(0,finalMensaje);
+                    //Se valida si la cadena empieza como se quiere que empiece
+                    if(mensaje.charAt(0)==INDICE_INICIAl){
+                        //Que hacer con el mensaje
+                        toast.makeText(getApplicationContext(),mensaje,Toast.LENGTH_SHORT).show();
+                    }
+
+                }
+                //Limpiando el Stringbuilder del mensaje que tiene
+                recDataString.delete(0,recDataString.length());
+
+            }
+        }
+    }
+
+
 }

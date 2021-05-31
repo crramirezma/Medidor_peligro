@@ -8,14 +8,17 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.MutableLiveData;
 
+import com.redes.medidor.ConstantesMensajes;
 import com.redes.medidor.baseDatos.BluetoothSqlLite;
 
 import java.io.IOException;
@@ -25,15 +28,21 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.UUID;
 
-public class Bluetooth {
+public class Bluetooth implements ConstantesMensajes {
+
+    //Zona de tags
+    private static final String BT_TAG  = "TAG BLUETOOTH";
+
+
+
     private BluetoothAdapter btAdapter;
     private BluetoothSocket btSocket;
 
     //Variables para la lectura de mensajes
-    private InoutThread thread;
-    private Handler bluetoothIn;
-    private static final int HANDLER_STATE=0;
-    private StringBuilder recibirDatos;
+    //private InoutThread thread;
+    private BtHandler bluetoothIn;
+    ConnectedThread thread;
+    boolean isThreadConnected;
 
 
     //Variables que recibiran los mensajes por parte del dispositivo
@@ -43,7 +52,7 @@ public class Bluetooth {
 
     private boolean threadConnected;        //sirve para validar si el thread esta conectado
     private String address=null;//Direccion mac del dispositivo a conectar
-    private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
 
     //datos mutables
     private MutableLiveData<ArrayList<BluetoothDevice>> dispositivos;
@@ -52,7 +61,7 @@ public class Bluetooth {
     private MutableLiveData<Boolean> conectadoStreams;          //Pensado para evaluar cuando uno de los Stream(input o output) no conecte
     private MutableLiveData<Boolean> errorRecibiendo;           //pensado para evaluar cuando hallan errores en la entrada de datos
     private MutableLiveData<Boolean> errorEnviando;
-
+    private MutableLiveData<Boolean> socketCreado;
 
 
     public Bluetooth(){
@@ -72,29 +81,10 @@ public class Bluetooth {
                 esActivado.postValue(Boolean.FALSE);
             }else{
                 //Lista de dispositivos
-
-                ArrayList<BluetoothDevice> lista=listarDispositivos();
-
-                dispositivos.postValue(lista);
+                recargarListaDispositivos();
                 Log.i("Mensaje",dispositivos.getValue().size()+"");
             }
         }
-    }
-
-    public MutableLiveData<ArrayList<BluetoothDevice>> getDispositivos() {
-        return dispositivos;
-    }
-
-    public MutableLiveData<Boolean> getEsAdaptable() {
-        return esAdaptable;
-    }
-
-    public MutableLiveData<Boolean> getEsActivado() {
-        return esActivado;
-    }
-
-    public void setAddress(String address){
-        this.address=address;
     }
 
     private void inicializar() {
@@ -109,25 +99,51 @@ public class Bluetooth {
         errorRecibiendo=new MutableLiveData<>();
         errorEnviando=new MutableLiveData<>();
 
+        bluetoothIn=new BtHandler();
 
-        bluetoothIn=new InHandler();
+        //bluetoothIn=new InHandler();
+        isThreadConnected=false;
         //Iniciando la base de datos
         //btSQL=new BluetoothSqlLite(context);
+
+
+
     }
 
-    public boolean conectarBt(){
-        boolean conecto=false;
-
-
-        return false;
+    public boolean isEnabled(){
+        return btAdapter.isEnabled();
     }
 
-    //Convierte el conjunto de dispositivos en un arraylist para presentar en la ui
+
+    /**
+     * RECARGAR LISTA DE DISPOSITIVOS:
+     *
+     * recargarListaDispositivos: Rellena la lista de dispositivos con los que se encuentren disponibles
+     * listarDispositivos:Convierte el conjunto de dispositivos en un arraylist para presentar en la ui
+     */
+
+    public void recargarListaDispositivos(){
+        ArrayList<BluetoothDevice> lista;
+        if(btAdapter.isEnabled()){
+            //Usando la funcion auxiliar "listarDispositivos" se consigue la lista de dispositivos disponibles
+            lista=listarDispositivos();
+        }else{
+            //Si no esta disponible, creara una lista con ningun valor
+            lista=new ArrayList<>();
+        }
+        //Se cargan los nuevos valores al Mutable correspondiente
+        dispositivos.postValue(lista);
+    }
+
     private ArrayList<BluetoothDevice> listarDispositivos() {
         return new ArrayList<>(btAdapter.getBondedDevices());
     }
 
 
+    /**
+     * CREACION DE HILOS PARA LA LECTURA DE DATOS
+     */
+    /*
     //Creando el socket bluetooth con el uuid creado anteriormente
     private BluetoothSocket crearSocket(BluetoothDevice device) throws IOException{
         return device.createRfcommSocketToServiceRecord(BTMODULEUUID);
@@ -174,17 +190,42 @@ public class Bluetooth {
                 return false;
             }
             //Probando que el modulo reciba el dato
-            thread.writeData("Hola mundo");
+            thread.writeData("Hola mundo como tan");
             return true;
         }
         //Si la ejecucion llega hasta este punto, es que no se ejecuto el bloque if anterior
         //por lo que no se creo el Thread
         return false;
 
+    }*/
+
+    public boolean comenzarListenerDatos(){
+        //Validando que el thread no este conectado
+        if(!threadConnected){
+            try {
+                BluetoothDevice device = btAdapter.getRemoteDevice(address);
+                thread = new ConnectedThread(device);
+                thread.start();
+            }catch(Exception e){
+                return false;
+            }
+            return true;
+        }
+        return true;
+    }
+    public boolean pararListenerDatos(){
+        try{
+            if(threadConnected){
+                thread.pararThread();
+                threadConnected=false;
+            }
+            return true;
+        }catch(Exception e){
+            return false;
+        }
     }
 
-
-
+    /*
     //handler para conectar con el hilo principa;
     public class InHandler extends Handler{
 
@@ -260,6 +301,186 @@ public class Bluetooth {
             }
         }
     }
+*/
+
+    /**
+     * SEGUNDO INTENTO BLUETOOTh thread
+     */
+    private class ConnectedThread extends Thread {
+        private final BluetoothSocket mmSocket;
+        private final InputStream mmInStream;
+        private final OutputStream mmOutStream;
+        private byte[] mmBuffer; // mmBuffer store for the stream
+
+        boolean ejecutar;       //Al modificar la variable "ejecutar" se detiene o continua la ejecucion del hilo
+
+        public ConnectedThread(BluetoothDevice device) {
+            BluetoothSocket socket=crearSocket(device);
+            mmSocket=socket;
+            InputStream tmpIn = null;
+            OutputStream tmpOut = null;
 
 
+            //Permitiendo la ejecucion del dato
+            ejecutar=true;
+
+            // Get the input and output streams; using temp objects because
+            // member streams are final.
+            try {
+                tmpIn = socket.getInputStream();
+            } catch (IOException e) {
+                Log.e(BT_TAG, "Error occurred when creating input stream", e);
+            }
+            try {
+                tmpOut = socket.getOutputStream();
+            } catch (IOException e) {
+                Log.e(BT_TAG, "Error occurred when creating output stream", e);
+            }
+
+            mmInStream = tmpIn;
+            mmOutStream = tmpOut;
+        }
+
+        public void run() {
+
+            mmBuffer = new byte[1024];
+            int numBytes = 0; // bytes returned from read()
+
+            // Keep listening to the InputStream until an exception occurs.
+            while (ejecutar) {
+                try {
+                    // Read from the InputStream.
+                    numBytes = mmInStream.read(mmBuffer);
+                    // Send the obtained bytes to the UI activity.
+                    Message readMsg = bluetoothIn.obtainMessage(
+                            MESSAGE_READ,
+                            numBytes,
+                            -1,
+                            mmBuffer);
+                    Log.i(TAG_HANDLER,readMsg.toString());
+                    readMsg.sendToTarget();
+                } catch (IOException e) {
+                    Log.d(BT_TAG, "Input stream was disconnected", e);
+                    break;
+                }
+            }
+        }
+
+        // Call this from the main activity to send data to the remote device.
+        public void write(byte[] bytes) {
+            try {
+                mmOutStream.write(bytes);
+
+                // Share the sent message with the UI activity.
+                Message writtenMsg = bluetoothIn.obtainMessage(
+                        MESSAGE_WRITE, -1, -1, mmBuffer);
+
+                writtenMsg.sendToTarget();
+            } catch (IOException e) {
+                Log.e(BT_TAG, "Error occurred when sending data", e);
+
+                // Send a failure message back to the activity.
+                Message writeErrorMsg =
+                        bluetoothIn.obtainMessage(MESSAGE_TOAST);
+                Bundle bundle = new Bundle();
+                bundle.putString("toast", "Couldn't send data to the other device");
+                writeErrorMsg.setData(bundle);
+                bluetoothIn.sendMessage(writeErrorMsg);
+            }
+        }
+
+        // Call this method from the main activity to shut down the connection.
+        public void cancel() {
+            try {
+                mmSocket.close();
+            } catch (IOException e) {
+                Log.e(BT_TAG, "Could not close the connect socket", e);
+            }
+        }
+
+        //Esta funcion crea el socket dentro del mismo thread
+        public BluetoothSocket crearSocket(BluetoothDevice device){
+
+            BluetoothSocket socket=null;
+            try{
+                socket=device.createRfcommSocketToServiceRecord(BTMODULEUUID);
+                socket.connect();
+            }catch(IOException e){
+                //Validar el error
+                //Puesto en el mutable para poder ser validado luego por la ui
+                socketCreado.postValue(false);
+                //return false;
+                return null;
+            }
+
+            return socket;
+
+        }
+
+
+        public void pararThread(){
+            ejecutar=false;
+        }
+    }
+
+
+    private class BtHandler extends Handler implements ConstantesMensajes{
+        Toast toast;
+        Context context;
+        StringBuilder recDataString;
+
+        public BtHandler (){//Context context){
+            //this.context=context;
+            recDataString=new StringBuilder();
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            if(msg.what==MESSAGE_READ){       //Comprobando que el mensaje recibido es el que estabamos esperando
+                //Se pasa el mensaje a un objeto de tipo string
+                //String mensaje=(String)msg.obj;
+                String mensaje = new String((byte[]) msg.obj, java.nio.charset.StandardCharsets.UTF_8);
+                //toast.makeText(context,mensaje,Toast.LENGTH_SHORT).show();
+                //Log.i(TAG_HANDLER,mensaje);
+                recDataString.append(mensaje);
+                //Usando el INDICE_FINAL para saber cuando termina el mensaje
+                int finalMensaje=recDataString.indexOf(Character.toString(INDICE_FINAL));
+                //Si el mensaje no es de tamaño uno, leer el mensaje
+                if(finalMensaje>0){
+                    //Sacando el String correspondiente al mensaje
+                    mensaje=recDataString.substring(0,finalMensaje);
+                    //Se valida si la cadena empieza como se quiere que empiece
+                    if(mensaje.charAt(0)==INDICE_INICIAl){
+                        //Que hacer con el mensaje
+                        //toast.makeText(context,mensaje,Toast.LENGTH_SHORT).show();
+                        Log.i(TAG_HANDLER,mensaje);
+                    }
+
+                }
+                //Limpiando el Stringbuilder del mensaje que tiene
+                recDataString.delete(0,recDataString.length());
+
+            }
+        }
+    }
+
+    /**
+     * GETTER Y SETTER
+     */
+
+    public MutableLiveData<ArrayList<BluetoothDevice>> getDispositivos() {
+        return dispositivos;
+    }
+
+    public MutableLiveData<Boolean> getEsAdaptable() {
+        return esAdaptable;
+    }
+
+    public MutableLiveData<Boolean> getEsActivado() {
+        return esActivado;
+    }
+
+    public void setAddress(String address){
+        this.address=address;
+    }
 }

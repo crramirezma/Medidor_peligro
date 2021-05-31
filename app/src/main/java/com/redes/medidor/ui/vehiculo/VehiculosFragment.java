@@ -51,14 +51,14 @@ public class VehiculosFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
         vehiculosViewModel = new ViewModelProvider(requireActivity()).get(VehiculosViewModel.class);
 
-        //Creando los observadores
-        observadores();
+
 
         //iniciando recycler
         iniciarRecycler();
 
 
-
+        //Generacion de observadores para este fragmento
+        observadores();
 
         // TODO: Use the ViewModel
     }
@@ -77,9 +77,11 @@ public class VehiculosFragment extends Fragment {
 
     }
 
-    private void observadores() {
+
+    //Algunos observadores que iran en este fragment
+    private void observadores(){
         //Revisando cuando se cambien los datos de dispositivos disponibles
-        vehiculosViewModel.getDispositivos().observe(getViewLifecycleOwner(), new Observer<ArrayList<BluetoothDevice>>() {
+        vehiculosViewModel.getDispositivos().observe(this, new Observer<ArrayList<BluetoothDevice>>() {
             @Override
             public void onChanged(ArrayList<BluetoothDevice> bluetoothDevices) {
                 if(bluetoothDevices==null){
@@ -90,34 +92,7 @@ public class VehiculosFragment extends Fragment {
 
             }
         });
-
-        //Validando si el valor de activado es modificado
-        vehiculosViewModel.getEsActivado().observe(getViewLifecycleOwner(), new Observer<Boolean>() {
-            @Override
-            public void onChanged(Boolean aBoolean) {
-                if(!aBoolean){
-                    Toast.makeText(getContext(),"El dispositivo tiene el Bluetooth desactivado, porfavor activelo",Toast.LENGTH_LONG).show();
-                }else{
-                    Toast.makeText(getContext(),"El dispositivo tiene el Bluetooth activado",Toast.LENGTH_LONG).show();
-                }
-                //Validar si el bluetooth esta activado
-            }
-        });
-
-        //Evaluando si el dispositivo acepta bluetooth
-        vehiculosViewModel.getEsAdaptable().observe(getViewLifecycleOwner(), new Observer<Boolean>() {
-            @Override
-            public void onChanged(Boolean aBoolean) {
-                //evalua si el dispositivo es apto para bluetooth o no
-                if(!aBoolean){
-                    Toast toast = Toast.makeText(getContext(),"El dispositivo no es apto para bluetooth",Toast.LENGTH_LONG);
-                    toast.setGravity(Gravity.CENTER,0,0);
-                    toast.show();
-                }
-
-            }
-        });
-
     }
+
 
 }
