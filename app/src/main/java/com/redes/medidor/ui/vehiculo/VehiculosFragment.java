@@ -13,14 +13,13 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import com.redes.medidor.Adapters.ListaBluetoothAdapter;
 import com.redes.medidor.R;
+import com.redes.medidor.ViewModel.DatosViewModel;
 
 
 import java.util.ArrayList;
@@ -31,7 +30,7 @@ public class VehiculosFragment extends Fragment {
     ListaBluetoothAdapter adapter;
     RecyclerView recycler;
 
-    private VehiculosViewModel vehiculosViewModel;
+    private DatosViewModel datosViewModel;
 
     public static VehiculosFragment newInstance() {
         return new VehiculosFragment();
@@ -49,7 +48,7 @@ public class VehiculosFragment extends Fragment {
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        vehiculosViewModel = new ViewModelProvider(requireActivity()).get(VehiculosViewModel.class);
+        datosViewModel = new ViewModelProvider(requireActivity()).get(DatosViewModel.class);
 
 
 
@@ -65,7 +64,7 @@ public class VehiculosFragment extends Fragment {
 
     private void iniciarRecycler() {
         //Creando el adapter para el recycler view con los datos para el constructor definidos en la clase
-        adapter=new ListaBluetoothAdapter(this.getActivity(),vehiculosViewModel);
+        adapter=new ListaBluetoothAdapter(this.getActivity(), datosViewModel);
         recycler.setAdapter(adapter);
     }
 
@@ -81,7 +80,7 @@ public class VehiculosFragment extends Fragment {
     //Algunos observadores que iran en este fragment
     private void observadores(){
         //Revisando cuando se cambien los datos de dispositivos disponibles
-        vehiculosViewModel.getDispositivos().observe(this, new Observer<ArrayList<BluetoothDevice>>() {
+        datosViewModel.getDispositivos().observe(this, new Observer<ArrayList<BluetoothDevice>>() {
             @Override
             public void onChanged(ArrayList<BluetoothDevice> bluetoothDevices) {
                 if(bluetoothDevices==null){

@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.PorterDuff;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,25 +17,21 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.FragmentActivity;
-import androidx.lifecycle.ViewModel;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.redes.medidor.R;
-import com.redes.medidor.ui.vehiculo.VehiculosViewModel;
+import com.redes.medidor.ViewModel.DatosViewModel;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-
 public class ListaBluetoothAdapter extends RecyclerView.Adapter<ListaBluetoothAdapter.ListaBluetoothHolder> {
-    VehiculosViewModel viewModel;
+    DatosViewModel viewModel;
 
     FragmentActivity fragment;
 
 
-    public ListaBluetoothAdapter(FragmentActivity fragment,VehiculosViewModel viewModel) {
+    public ListaBluetoothAdapter(FragmentActivity fragment, DatosViewModel viewModel) {
         this.fragment=fragment;
 
         this.viewModel=viewModel;
@@ -129,7 +124,7 @@ public class ListaBluetoothAdapter extends RecyclerView.Adapter<ListaBluetoothAd
                         public void onClick(DialogInterface dialog, int which) {
                             switch (which){
                                 case 0:
-
+                                    //subiendo los datos escogidos a la opcion por defecto
                                     subirSharedPreferences();
                                     break;
                                 case 1:
@@ -160,8 +155,13 @@ public class ListaBluetoothAdapter extends RecyclerView.Adapter<ListaBluetoothAd
 
                             //Subiendolos a las preferencias
                             if(editor.commit()){
-                                Toast.makeText(fragment, "Aqui llego", Toast.LENGTH_SHORT).show();
+                                //Zona para validar que se hallan subido los datos a las preferencias
+
+                                //Modificando el valor del MAc en el viewModel
+                                viewModel.modificarMac(macAdress);
                             }
+
+
                         }
                     })
                     /*.setSingleChoiceItems(items, 1, new DialogInterface.OnClickListener() {

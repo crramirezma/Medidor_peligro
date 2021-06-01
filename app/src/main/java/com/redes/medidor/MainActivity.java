@@ -2,7 +2,6 @@ package com.redes.medidor;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -12,21 +11,17 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Menu;
 import android.widget.Toast;
 
-import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.navigation.NavigationView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
-import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -35,12 +30,8 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.redes.medidor.ViewModel.MainViewModel;
 import com.redes.medidor.databinding.ActivityMainBinding;
-import com.redes.medidor.ui.vehiculo.VehiculosViewModel;
-
-import java.util.ArrayList;
-
+import com.redes.medidor.ViewModel.DatosViewModel;
 
 
 public class MainActivity extends AppCompatActivity{
@@ -52,7 +43,7 @@ public class MainActivity extends AppCompatActivity{
 
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityMainBinding binding;
-    private VehiculosViewModel vehiculosViewModel;
+    private DatosViewModel datosViewModel;
 
     private Handler datosBTHandler;
 
@@ -68,8 +59,11 @@ public class MainActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
 
         //Creando y enlazando el viewModel
-        vehiculosViewModel=new ViewModelProvider(this).get(VehiculosViewModel.class);
-        vehiculosViewModel.activarBluetooth(getApplicationContext());
+        datosViewModel =new ViewModelProvider(this).get(DatosViewModel.class);
+
+        //definiendo por primera vez el valor del MAC
+        //Si ya se ha usado la aplicacion, este valor estara en las "SharedPreferences"
+        datosViewModel.modificarMac(getApplicationContext().getSharedPreferences(String.valueOf(R.string.modulo_bluetooth),Context.MODE_PRIVATE).getString(String.valueOf(R.string.mac_bluetooth),"0"));
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -175,11 +169,11 @@ public class MainActivity extends AppCompatActivity{
                     switch (estado){
                         case BluetoothAdapter.STATE_OFF:
                             Toast.makeText(getApplicationContext(),"Porfavor inicia el Bluetooth",Toast.LENGTH_SHORT).show();
-                            vehiculosViewModel.recargarDatos();
+                            datosViewModel.recargarDatos();
                             break;
                         case BluetoothAdapter.STATE_ON:
                             //codigo para cuando se activa el bluetooth
-                            vehiculosViewModel.recargarDatos();
+                            datosViewModel.recargarDatos();
                             break;
                         default:
 
@@ -211,7 +205,7 @@ public class MainActivity extends AppCompatActivity{
     */
     View.OnClickListener opcionesBluetoothDialog= v -> {
         //Validando que el Bluetooth se encuentre disponible
-        if(vehiculosViewModel.bluetoothDisponible()){
+        if(datosViewModel.bluetoothDisponible()){
             AlertDialog alert= lanzarDialog();
             alert.show();
         }else{
@@ -240,7 +234,7 @@ public class MainActivity extends AppCompatActivity{
                         switch (which){
                             case 0:
 
-                                boolean v=vehiculosViewModel.comenzarTransferencia();
+                                boolean v= datosViewModel.comenzarTransferencia();
                                 Toast.makeText(getApplicationContext(),(v?"Se ha conectado":"No se ha conectado"),Toast.LENGTH_SHORT).show();
                                 break;
                             default:
@@ -272,7 +266,7 @@ public class MainActivity extends AppCompatActivity{
 
 
         //Validando si el valor de activado es modificado
-        vehiculosViewModel.getEsActivado().observe(this, new Observer<Boolean>() {
+        datosViewModel.getEsActivado().observe(this, new Observer<Boolean>() {
             @Override
             public void onChanged(Boolean aBoolean) {
                 if(!aBoolean){
@@ -288,21 +282,29 @@ public class MainActivity extends AppCompatActivity{
         });
 
         //Evaluando si el dispositivo acepta bluetooth
-        vehiculosViewModel.getEsAdaptable().observe(this, new Observer<Boolean>() {
-            @Override
-            public void onChanged(Boolean aBoolean) {
-                //evalua si el dispositivo es apto para bluetooth o no
-                if(!aBoolean){
-                    Toast toast = Toast.makeText(getApplicationContext(),"El dispositivo no es apto para bluetooth",Toast.LENGTH_LONG);
-                    toast.setGravity(Gravity.CENTER,0,0);
-                    toast.show();
-                }
-
+        datosViewModel.getEsAdaptable().observe(this, aBoolean -> {
+            //evalua si el dispositivo es apto para bluetooth o no
+            if(!aBoolean){
+                Toast toast = Toast.makeText(getApplicationContext(),"El dispositivo no es apto para bluetooth",Toast.LENGTH_LONG);
+                toast.setGravity(Gravity.CENTER,0,0);
+                toast.show();
             }
+
         });
 
 
-        //Observador constante del estado del bluetooth
+        //Evaluando nuevos datos provenientes del arduino
+        datosViewModel.getNuevoDato().observe(this,datosBt -> {
+            //Evaluando el dato para ver si se puede enviar a la base de datos
+            if(datosBt!=null){
+                //Obteniendo el valor de la mac a partir de las preferencias compartidas
+                SharedPreferences preferences=getSharedPreferences(String.valueOf(R.string.modulo_bluetooth), Context.MODE_PRIVATE);
+                String MAC=preferences.getString(String.valueOf(R.string.mac_bluetooth),"0");
+
+                //subiendo el dato a la base de datos
+                datosViewModel.subirDatos(MAC,datosBt);
+            }
+        });
 
 
     }

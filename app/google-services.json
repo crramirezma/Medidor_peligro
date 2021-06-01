@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "389433155573",
+    "project_id": "medidorpeligro",
+    "storage_bucket": "medidorpeligro.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:389433155573:android:e52738cf70d05bf0f44abc",
+        "android_client_info": {
+          "package_name": "com.redes.medidor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "389433155573-m1rhp809pv55kahrtb2tefshqrr0g8jg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.redes.medidor",
+            "certificate_hash": "56d83a317228929868b1eda253ebb5d6655753d4"
+          }
+        },
+        {
+          "client_id": "389433155573-ujtrnlqbilece4tdbfg6260nrhul3eek.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOlR0vGaJLT0p0TBjcfJKXjnPz6RpeBXA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "389433155573-ujtrnlqbilece4tdbfg6260nrhul3eek.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

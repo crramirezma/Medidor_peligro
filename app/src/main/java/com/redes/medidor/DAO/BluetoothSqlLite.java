@@ -1,4 +1,4 @@
-package com.redes.medidor.baseDatos;
+package com.redes.medidor.DAO;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;

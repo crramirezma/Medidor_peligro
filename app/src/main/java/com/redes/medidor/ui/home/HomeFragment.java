@@ -7,24 +7,21 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.redes.medidor.R;
 import com.redes.medidor.databinding.FragmentHomeBinding;
-import com.redes.medidor.ui.vehiculo.VehiculosViewModel;
+import com.redes.medidor.ViewModel.DatosViewModel;
 
 public class HomeFragment extends Fragment {
 
-    private VehiculosViewModel vehiculosViewModel;
+    private DatosViewModel datosViewModel;
     private FragmentHomeBinding binding;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        vehiculosViewModel =
-                new ViewModelProvider(this).get(VehiculosViewModel.class);
+        datosViewModel =
+                new ViewModelProvider(this).get(DatosViewModel.class);
         //Pasandole al objeto "Bluetooth" el contexto para el manejo de la base de datos
 
 

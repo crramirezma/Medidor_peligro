@@ -1,32 +1,26 @@
-//Clase inspirada en el trabajo hecho por  jose-jhr
-//repositorio: https://github.com/jose-jhr/-bluetoothjhr.git
-
 package com.redes.medidor.Bluetooth;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.redes.medidor.Clases.DatosBt;
 import com.redes.medidor.ConstantesMensajes;
-import com.redes.medidor.baseDatos.BluetoothSqlLite;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.UUID;
 
 public class Bluetooth implements ConstantesMensajes {
 
@@ -63,6 +57,7 @@ public class Bluetooth implements ConstantesMensajes {
     private MutableLiveData<Boolean> errorEnviando;
     private MutableLiveData<Boolean> socketCreado;
 
+    private MutableLiveData<DatosBt> nuevoDato;                 //Pensado para observar nuevos datos provenientes del arduino
 
     public Bluetooth(){
         //inicializando las variables
@@ -99,12 +94,15 @@ public class Bluetooth implements ConstantesMensajes {
         errorRecibiendo=new MutableLiveData<>();
         errorEnviando=new MutableLiveData<>();
 
+        nuevoDato=new MutableLiveData<>();
+
         bluetoothIn=new BtHandler();
 
         //bluetoothIn=new InHandler();
         isThreadConnected=false;
         //Iniciando la base de datos
         //btSQL=new BluetoothSqlLite(context);
+
 
 
 
@@ -139,66 +137,6 @@ public class Bluetooth implements ConstantesMensajes {
         return new ArrayList<>(btAdapter.getBondedDevices());
     }
 
-
-    /**
-     * CREACION DE HILOS PARA LA LECTURA DE DATOS
-     */
-    /*
-    //Creando el socket bluetooth con el uuid creado anteriormente
-    private BluetoothSocket crearSocket(BluetoothDevice device) throws IOException{
-        return device.createRfcommSocketToServiceRecord(BTMODULEUUID);
-    }
-
-
-    public boolean comenzarListenerDatos(){
-        //final Handler handler=new Handler();
-        final String delimiter="]";
-
-        //Obtener la direccion mac alojada en la SharedPreferences
-
-
-        //Creando el socket usando la funcion "crearSocket"
-        if(!address.equals("0")){       //primero se valida que la variable address tenga un valor de mac confiable
-
-            try {
-                //Obteniendo el dispositivo usando el address
-                BluetoothDevice d = btAdapter.getRemoteDevice(address);
-                //creando el socket a partir de el
-                btSocket = crearSocket(d);
-                //conectandolo
-                //Toca comprobar que no se generen errores de coneccion con  el socket
-                try{
-                    btSocket.connect();
-                }catch(IOException e){
-                    //si se generan, toca desconectarlo
-                    while (btSocket.isConnected()){
-                        try{
-                            btSocket.close();
-                        }catch (IOException e2){
-                            //
-                        }
-                    }
-                    //dado que no se conecto el socket, tampoco se podra conectar el thread
-                    return false;
-                }
-                int i=0;
-                //Creando el thread para la ejecucion de tareas asincronas de comunicacion con el programa
-                thread = new InoutThread(btSocket);
-            }catch (Exception e){
-                conectadoStreams.postValue(false);
-                //dado esto, no se creo el thread correctamente
-                return false;
-            }
-            //Probando que el modulo reciba el dato
-            thread.writeData("Hola mundo como tan");
-            return true;
-        }
-        //Si la ejecucion llega hasta este punto, es que no se ejecuto el bloque if anterior
-        //por lo que no se creo el Thread
-        return false;
-
-    }*/
-
     public boolean comenzarListenerDatos(){
         //Validando que el thread no este conectado
         if(!threadConnected){
@@ -225,86 +163,9 @@ public class Bluetooth implements ConstantesMensajes {
         }
     }
 
-    /*
-    //handler para conectar con el hilo principa;
-    public class InHandler extends Handler{
-
-
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            //que hacer con el mensaje
-            Log.i("Mensaje desde el thread", (String)msg.obj);
-
-        }
-    }
-
-
-
-    //Thread de recepcion y envio de datos
-    private class InoutThread extends Thread{
-        private InputStream entradaDatos;
-        private OutputStream salidaDatos;
-
-        public InoutThread(BluetoothSocket socket) {
-
-            //Iniciando los valores de las variables de entrada y salida de datos
-            InputStream tmpIn = null;
-            OutputStream tmpOut = null;
-            try{
-                tmpIn= socket.getInputStream();
-                tmpOut= socket.getOutputStream();
-            }catch (IOException e){
-                conectadoStreams.postValue(false);
-            }
-
-            entradaDatos=tmpIn;
-            salidaDatos=tmpOut;
-        }
-
-        @Override
-        public void run() {
-            byte[] buffer= new byte[256];
-            int cantBytes;
-
-            while(true){
-                try{
-                    //Se le carga a la variable "buffer" lo que le llegue del bluetooth
-                    //y se le crga a "cantBytes" el tamaño en bytes del mensaje
-                    cantBytes=entradaDatos.read(buffer);
-                    //luego se traduce a String, texto
-                    String mensaje=new String(buffer,0,cantBytes);
-
-                    //zona para el handler
-                    Message message=bluetoothIn.obtainMessage();
-                    message.obj=mensaje;
-                    bluetoothIn.sendMessage(message);
-                    //completar
-                }catch (IOException e){
-                    errorRecibiendo.postValue(false);
-                    break;
-                }
-            }
-
-        }
-
-        //Metodo para enviar datos al Bluetooth
-        public void writeData(String msg){
-            //Primero toca convertir el mensaje tipo String en bytes
-            byte[] buffer=msg.getBytes();
-
-            //Validando errores de envio de datos
-            try{
-                salidaDatos.write(buffer);
-            } catch (IOException e) {
-                //Cargando al mutablelivedata el valor falso, esto se hace para poder ser evaluado luego por la interfaz
-                errorEnviando.postValue(false);
-            }
-        }
-    }
-*/
 
     /**
-     * SEGUNDO INTENTO BLUETOOTh thread
+     * BLUETOOTh thread
      */
     private class ConnectedThread extends Thread {
         private final BluetoothSocket mmSocket;
@@ -357,13 +218,22 @@ public class Bluetooth implements ConstantesMensajes {
                             numBytes,
                             -1,
                             mmBuffer);
-                    Log.i(TAG_HANDLER,readMsg.toString());
+                    //Log.i(TAG_HANDLER,"readMsg.toString()");
                     readMsg.sendToTarget();
                 } catch (IOException e) {
                     Log.d(BT_TAG, "Input stream was disconnected", e);
                     break;
+                }catch (Exception e){
+                    Log.d(BT_TAG, "Error", e);
                 }
             }
+            try {
+                mmInStream.close();
+                mmOutStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         }
 
         // Call this from the main activity to send data to the remote device.
@@ -423,7 +293,6 @@ public class Bluetooth implements ConstantesMensajes {
         }
     }
 
-
     private class BtHandler extends Handler implements ConstantesMensajes{
         Toast toast;
         Context context;
@@ -436,24 +305,34 @@ public class Bluetooth implements ConstantesMensajes {
 
         @Override
         public void handleMessage(@NonNull Message msg) {
+            //recDataString=new StringBuilder();
+
             if(msg.what==MESSAGE_READ){       //Comprobando que el mensaje recibido es el que estabamos esperando
                 //Se pasa el mensaje a un objeto de tipo string
                 //String mensaje=(String)msg.obj;
                 String mensaje = new String((byte[]) msg.obj, java.nio.charset.StandardCharsets.UTF_8);
-                //toast.makeText(context,mensaje,Toast.LENGTH_SHORT).show();
+
                 //Log.i(TAG_HANDLER,mensaje);
                 recDataString.append(mensaje);
+                Log.i(TAG_HANDLER+"H",mensaje);
                 //Usando el INDICE_FINAL para saber cuando termina el mensaje
                 int finalMensaje=recDataString.indexOf(Character.toString(INDICE_FINAL));
                 //Si el mensaje no es de tamaño uno, leer el mensaje
                 if(finalMensaje>0){
                     //Sacando el String correspondiente al mensaje
-                    mensaje=recDataString.substring(0,finalMensaje);
+                    mensaje=recDataString.substring(0,finalMensaje+1);
                     //Se valida si la cadena empieza como se quiere que empiece
                     if(mensaje.charAt(0)==INDICE_INICIAl){
                         //Que hacer con el mensaje
                         //toast.makeText(context,mensaje,Toast.LENGTH_SHORT).show();
                         Log.i(TAG_HANDLER,mensaje);
+
+                        //usando la funcion auxiliar "datosFromString" para convertir el mensaje en un objeto tipo "DatosBt"
+                        DatosBt dato=datosFromString(mensaje);
+                        //Si el objeto no es nulo, se puede enviar al mutable correspondiente
+                        if(dato!=null){
+                            nuevoDato.postValue(dato);
+                        }
                     }
 
                 }
@@ -461,6 +340,39 @@ public class Bluetooth implements ConstantesMensajes {
                 recDataString.delete(0,recDataString.length());
 
             }
+        }
+
+        /**
+         *
+         * @param msg:mensaje leido desde el bluetooth
+         * @return objeto de tipo "DatosBt" a partir del mensaje
+         */
+        private DatosBt datosFromString(String msg) {
+            //Variables para el retorno
+            int tipo;
+            double dato;
+
+            //str se usara para jugar con las posiciones dentro del string
+            StringBuilder str=new StringBuilder();
+            str.append(msg);
+
+            //calculando los indices para poder luego separar los datos
+            int inicio=str.indexOf(Character.toString(INDICE_INICIAl));
+            int fin=str.indexOf(Character.toString(INDICE_FINAL));
+            int medio=str.indexOf(":");
+
+            try {
+                //tomando el dato que se encuentra entre "[" y ":", el cual corresponde al tipo
+                tipo=Integer.parseInt(str.substring(inicio+1,medio));
+                //tomando el dato que se encuentra entre ":" y "]", el cual corresponde al dato
+                dato=Double.parseDouble(str.substring(medio+1,fin-1));
+            }catch (Exception e){
+                Log.i(TAG_HANDLER,e.toString());
+                return null;
+            }
+
+            //Si la linea anterior no tuvo error, ya se podra crear el nuevo obejto sin problema
+            return new DatosBt(tipo,dato);
         }
     }
 
@@ -482,5 +394,9 @@ public class Bluetooth implements ConstantesMensajes {
 
     public void setAddress(String address){
         this.address=address;
+    }
+
+    public LiveData<DatosBt> getNuevoDato() {
+        return nuevoDato;
     }
 }
