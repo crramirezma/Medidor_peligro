@@ -1,12 +1,9 @@
-package com.redes.medidor.DAO;
+package com.redes.medidor.IO;
 
 import com.google.firebase.database.FirebaseDatabase;
-import com.redes.medidor.Clases.DatosBt;
+import com.redes.medidor.Model.Clases.DatosBt;
 
 import com.google.firebase.database.DatabaseReference;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class DatosDao {
 
@@ -40,13 +37,25 @@ public class DatosDao {
         DatosVehiculos datosVehiculos=new DatosVehiculos(datos);
 
         //Subiendo los datos a la base usando la referencia creada anteriormente
-        vehiculosRef.child(MAC).push().setValue(datosVehiculos).addOnCompleteListener(task -> {
+        //primero generamos una llave aleatoria, que sera el nodo de los datos que se subiran
+        String key=vehiculosRef.child(MAC).push().getKey();
+        //Subiendo los datos a la correspondiente key
+        vehiculosRef.child(MAC).child(key).setValue(datosVehiculos).addOnCompleteListener(task -> {
             if(!task.isSuccessful()){
                 //Codigo para validacion de error al subir los datos
             }
         });
+
+        //Para hacer consultas, se creo una tabla extra por cada tipo de sensor
+        //Cargando a la tabla correspondiente
+        //Con esto se crea una lista de referencias a los datos dependiendo de su tipo
+        vehiculosRef.child(String.valueOf(datos.getTipo())).child(key).setValue(datos.getTiempo());
+
         //NOTA:no es necesario revisar si existe el nodo de la direccion mac
         //     Si no existe, la api de firebase lo creara automaticamente
+
+
+
     }
 
 

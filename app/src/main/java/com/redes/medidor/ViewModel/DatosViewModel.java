@@ -1,19 +1,15 @@
 package com.redes.medidor.ViewModel;
 
 import android.bluetooth.BluetoothDevice;
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.redes.medidor.Bluetooth.Bluetooth;
-import com.redes.medidor.Clases.DatosBt;
-import com.redes.medidor.DAO.DatosDao;
-import com.redes.medidor.R;
-import com.redes.medidor.DAO.BluetoothSqlLite;
+import com.redes.medidor.IO.Bluetooth;
+import com.redes.medidor.Model.Clases.DatosBt;
+import com.redes.medidor.IO.DatosDao;
 
 import java.util.ArrayList;
 
@@ -25,17 +21,25 @@ public class DatosViewModel extends ViewModel {
     private MutableLiveData<Boolean> esAdaptable;
     private MutableLiveData<Boolean> esActivado;
 
+    private LiveData<Boolean> esConectado;
+
     //private boolean bdCreada;         //Con esta variable se pretende evitar que se cree nuevamente el objeto de tipo Bluetooth
     //BluetoothSqlLite bdBt;            //Variable de la base de datos
 
 
-    //ZONA DE DECLARACION PARA LA BASE DE DATOS
+    /**
+     *ZONA DE DECLARACION PARA LA BASE DE DATOS
+     */
 
     //Variable encargada de administrar la subida de datos a firebase
     private DatosDao DAO;
 
     //LiveData con el que se observaran los datos nuevos que lleguen desde el arduino
     private LiveData<DatosBt> nuevoDato;
+
+    /**
+     * ZONA DE MANEJO DE PYTHON
+     */
 
     public DatosViewModel(){
         //El context lo usa el bluetooth para el manejo de la base de datos interna
@@ -46,6 +50,7 @@ public class DatosViewModel extends ViewModel {
         esAdaptable= miBt.getEsAdaptable();
         esActivado= miBt.getEsActivado();
 
+        esConectado=miBt.getEsConectado();
 
         DAO=new DatosDao();
         nuevoDato= miBt.getNuevoDato();
@@ -73,12 +78,16 @@ public class DatosViewModel extends ViewModel {
         miBt.recargarListaDispositivos();
     }
 
-    public boolean comenzarTransferencia(){
-        return miBt.comenzarListenerDatos();
+    public void comenzarConeccion(){
+        miBt.comenzarConeccion();
     }
 
     public boolean detenerTransferencia(){
-        return miBt.pararListenerDatos();
+        return miBt.pararConeccion();
+    }
+
+    public void enviarDatoBt(byte b){
+        miBt.enviarDato(b);
     }
 
 
@@ -107,5 +116,9 @@ public class DatosViewModel extends ViewModel {
 
     public LiveData<DatosBt> getNuevoDato() {
         return nuevoDato;
+    }
+
+    public LiveData<Boolean> getEsConectado() {
+        return esConectado;
     }
 }

@@ -1,4 +1,4 @@
-package com.redes.medidor.Clases;
+package com.redes.medidor.Model.Clases;
 
 import java.util.Calendar;
 

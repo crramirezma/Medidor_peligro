@@ -1,4 +1,4 @@
-package com.redes.medidor;
+package com.redes.medidor.ui;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -30,6 +30,8 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.redes.medidor.Model.ConstantesMensajes;
+import com.redes.medidor.R;
 import com.redes.medidor.databinding.ActivityMainBinding;
 import com.redes.medidor.ViewModel.DatosViewModel;
 
@@ -228,18 +230,15 @@ public class MainActivity extends AppCompatActivity{
 
         AlertDialog.Builder builder=new AlertDialog.Builder(this);
         builder
-                .setItems(datos, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        switch (which){
-                            case 0:
+                .setItems(datos, (dialog, which) -> {
+                    switch (which){
+                        case 0:
 
-                                boolean v= datosViewModel.comenzarTransferencia();
-                                Toast.makeText(getApplicationContext(),(v?"Se ha conectado":"No se ha conectado"),Toast.LENGTH_SHORT).show();
-                                break;
-                            default:
-                                dialog.dismiss();
-                        }
+                            datosViewModel.comenzarConeccion();
+                            //Toast.makeText(getApplicationContext(),(v?"Se ha conectado":"No se ha conectado"),Toast.LENGTH_SHORT).show();
+                            break;
+                        default:
+                            dialog.dismiss();
                     }
                 })
                 .setPositiveButton(R.string.enviar_comando, new DialogInterface.OnClickListener() {
@@ -301,7 +300,7 @@ public class MainActivity extends AppCompatActivity{
                 SharedPreferences preferences=getSharedPreferences(String.valueOf(R.string.modulo_bluetooth), Context.MODE_PRIVATE);
                 String MAC=preferences.getString(String.valueOf(R.string.mac_bluetooth),"0");
 
-                //subiendo el dato a la base de datos
+                //TODO implementar el algoritmo de SVC
                 datosViewModel.subirDatos(MAC,datosBt);
             }
         });
@@ -309,7 +308,7 @@ public class MainActivity extends AppCompatActivity{
 
     }
     //Creando una subclase para el handler
-    private class BtHandler extends Handler implements ConstantesMensajes{
+    private class BtHandler extends Handler implements ConstantesMensajes {
         Toast toast;
         @Override
         public void handleMessage(@NonNull Message msg) {

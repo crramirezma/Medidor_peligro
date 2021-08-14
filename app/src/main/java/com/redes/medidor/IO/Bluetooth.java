@@ -1,4 +1,4 @@
-package com.redes.medidor.Bluetooth;
+package com.redes.medidor.IO;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -14,8 +14,8 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.redes.medidor.Clases.DatosBt;
-import com.redes.medidor.ConstantesMensajes;
+import com.redes.medidor.Model.Clases.DatosBt;
+import com.redes.medidor.Model.ConstantesMensajes;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,8 +56,10 @@ public class Bluetooth implements ConstantesMensajes {
     private MutableLiveData<Boolean> errorRecibiendo;           //pensado para evaluar cuando hallan errores en la entrada de datos
     private MutableLiveData<Boolean> errorEnviando;
     private MutableLiveData<Boolean> socketCreado;
+    private MutableLiveData<Boolean> esConectado;               //Pensado par aobservar si se conecto el bluetooth o no
 
     private MutableLiveData<DatosBt> nuevoDato;                 //Pensado para observar nuevos datos provenientes del arduino
+
 
     public Bluetooth(){
         //inicializando las variables
@@ -93,8 +95,10 @@ public class Bluetooth implements ConstantesMensajes {
         conectadoStreams=new MutableLiveData<>();
         errorRecibiendo=new MutableLiveData<>();
         errorEnviando=new MutableLiveData<>();
+        esConectado=new MutableLiveData<>(false);
 
         nuevoDato=new MutableLiveData<>();
+
 
         bluetoothIn=new BtHandler();
 
@@ -137,21 +141,29 @@ public class Bluetooth implements ConstantesMensajes {
         return new ArrayList<>(btAdapter.getBondedDevices());
     }
 
-    public boolean comenzarListenerDatos(){
+    public void comenzarConeccion(){
         //Validando que el thread no este conectado
-        if(!threadConnected){
-            try {
-                BluetoothDevice device = btAdapter.getRemoteDevice(address);
-                thread = new ConnectedThread(device);
-                thread.start();
-            }catch(Exception e){
-                return false;
+        Thread thread2=new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    BluetoothDevice device = btAdapter.getRemoteDevice(address);
+                    thread = new ConnectedThread(device);
+                    Log.e("creando la coneccion","1");
+                    esConectado.postValue(Boolean.valueOf(true));
+                    Log.e("creando la coneccion","2");
+                    thread.start();
+                    //esConectado.postValue(true);
+
+                }catch(Exception e) {
+                    esConectado.postValue(false);
+                    Log.e("Error creando la coneccion",e.toString());
+                }
             }
-            return true;
-        }
-        return true;
+        });
+        thread2.start();
     }
-    public boolean pararListenerDatos(){
+    public boolean pararConeccion(){
         try{
             if(threadConnected){
                 thread.pararThread();
@@ -163,6 +175,11 @@ public class Bluetooth implements ConstantesMensajes {
         }
     }
 
+    //Con esta funcion se envia un dato al modulo bluetooth correspondiente
+    public void enviarDato(byte b){
+        //El objeto tipo thread tiene la funcion write, que se encarga del envio correspondiente
+        thread.write(b);
+    }
 
     /**
      * BLUETOOTh thread
@@ -237,7 +254,7 @@ public class Bluetooth implements ConstantesMensajes {
         }
 
         // Call this from the main activity to send data to the remote device.
-        public void write(byte[] bytes) {
+        public void write(byte bytes) {
             try {
                 mmOutStream.write(bytes);
 
@@ -398,5 +415,9 @@ public class Bluetooth implements ConstantesMensajes {
 
     public LiveData<DatosBt> getNuevoDato() {
         return nuevoDato;
+    }
+
+    public LiveData<Boolean> getEsConectado() {
+        return esConectado;
     }
 }

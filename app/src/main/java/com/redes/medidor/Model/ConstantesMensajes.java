@@ -1,4 +1,4 @@
-package com.redes.medidor;
+package com.redes.medidor.Model;
 
 import java.util.UUID;
 

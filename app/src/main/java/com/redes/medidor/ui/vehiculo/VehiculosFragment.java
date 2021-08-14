@@ -17,7 +17,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.redes.medidor.Adapters.ListaBluetoothAdapter;
+import com.redes.medidor.ui.Adapters.ListaBluetoothAdapter;
 import com.redes.medidor.R;
 import com.redes.medidor.ViewModel.DatosViewModel;
 
@@ -80,7 +80,7 @@ public class VehiculosFragment extends Fragment {
     //Algunos observadores que iran en este fragment
     private void observadores(){
         //Revisando cuando se cambien los datos de dispositivos disponibles
-        datosViewModel.getDispositivos().observe(this, new Observer<ArrayList<BluetoothDevice>>() {
+        datosViewModel.getDispositivos().observe(getViewLifecycleOwner(), new Observer<ArrayList<BluetoothDevice>>() {
             @Override
             public void onChanged(ArrayList<BluetoothDevice> bluetoothDevices) {
                 if(bluetoothDevices==null){
